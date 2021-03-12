@@ -1,6 +1,7 @@
 
 import torch
 from .torch_trainer import TorchTrainer
+from huggingface_hub import ModelHubMixin
 
 
 class Trainer(TorchTrainer):
@@ -17,7 +18,7 @@ class Trainer(TorchTrainer):
     def training_step(self, batch, batch_idx):
 
         for k in batch:
-          batch[k] = batch[k].to(self.device)
+            batch[k] = batch[k].to(self.device)
 
         out = self.model(**batch, return_dict=True)
         loss = out["loss"].mean()
@@ -27,7 +28,7 @@ class Trainer(TorchTrainer):
     def validation_step(self, batch):
 
         for k in batch:
-          batch[k] = batch[k].to(self.device)
+            batch[k] = batch[k].to(self.device)
 
         out = self.model(**batch, return_dict=True)
         loss = out["loss"].mean()
@@ -35,9 +36,9 @@ class Trainer(TorchTrainer):
 
     def training_epoch_end(self, epoch, losses):
         # saving state_dict at epoch level
-        self.save_training_state_dict(self.args.base_dir)
-        self.save_pretrained(self.args.save_path)
-
-    def save_pretrained(self, path: str):
-        module = self.model.module if hasattr(self.model, "module") else self.model
-        torch.save(module.state_dict(), path)
+        if self.args.weights_dir:
+            self.model.save_pretrained(self.args.weights_dir)
+            if self.args.hub_id:
+                ModelHubMixin.push_to_hub(
+                    self.args.weights_dir, model_id=self.args.hub_id, commit_message=f"add epoch-{epoch} wts"
+                    )

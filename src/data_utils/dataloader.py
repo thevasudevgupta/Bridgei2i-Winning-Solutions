@@ -2,6 +2,7 @@ import torch
 
 import re
 from datasets import load_dataset
+from transformers import MBartForConditionalGeneration, MBartTokenizer
 
 def preprocess_article(article, sep_token="</s>"):
 
@@ -14,18 +15,39 @@ def preprocess_article(article, sep_token="</s>"):
                     status = True
             if status:
                 text.remove(sent)
-        return ". ".join(text).strip() # `\n` will add so many `<sep>` token
+        return "\n".join(text)
 
     def remove_hash_tags(text):
         text = re.sub("#\S+", "", text)
         return text
 
-    article = re.sub("\n\n", sep_token, article)
     article = remove_sentences_with_links(article)
     article = remove_hash_tags(article)
+    # `\n` will add so many `<sep>` token
+    article = re.sub("\n\n", sep_token, article)
+    article = re.sub("\n", ".", article)
+    return article.strip()
 
-    # +1 /d
-    return article
+def translate(example, model, tokenizer, max_pred_length=32):
+
+    def get_translation(sample):
+
+        device = torch.device("cpu")
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+        model.to(device)
+        model.eval()
+
+        sample = tokenizer(src_texts=sample, return_tensors="pt")
+        for k in sample:
+            sample[k] = sample[k].to(device)
+
+        out = model.generate(**sample, decoder_start_token_id=tokenizer.lang_code_to_id["en_XX"], max_length=max_pred_length)
+        sample = tokenizer.batch_decode(out, skip_special_tokens=True)
+        return sample
+
+    example["CleanedHeadline"] = get_translation(example["Headline"])
+    return example
 
 
 class DataLoader(object):
@@ -51,7 +73,16 @@ class DataLoader(object):
         data = data.map(lambda x: {"summary_length": len(x["Headline"].split())})
 
         data = data.map(lambda x: {"CleanedText": preprocess_article(x["Text"], self.sep_token)})
-        data = data.map(lambda x: {"CleanedHeadline": x["Headline"]}) # translate it
+
+        data = data.map(lambda x: {"CleanedHeadline": x["Headline"]})
+        # fn_kwargs = {
+        #     "model": MBartForConditionalGeneration.from_pretrained("vasudevgupta/mbart-large-cc25"),
+        #     "tokenizer": MBartTokenizer.from_pretrained("vasudevgupta/mbart-iitb-hin-eng"),
+        #     "max_pred_length": 32,
+        # }
+
+        # data = data.map(translate, fn_kwargs=fn_kwargs)
+        # print([data[i]["CleanedHeadline"] for i in range(10)])
 
         print("Samples with article length > 560 are", data.filter(lambda x: x["article_length"] > 560))
 
@@ -87,15 +118,14 @@ class DataLoader(object):
 
         # src_lang will be dummy
         features = self.tokenizer.prepare_seq2seq_batch(
-            src_texts=article, src_lang="hi_IN", tgt_lang="en_XX", tgt_texts=summary, truncation=True, max_length=self.max_length, max_target_length=self.max_target_length
+            src_texts=article, src_lang="hi_IN", tgt_lang="en_XX", tgt_texts=summary, truncation=True, 
+            max_length=self.max_length, max_target_length=self.max_target_length, return_tensors="pt"
         )
 
         return features
 
 
 if __name__ == '__main__':
-
-    from transformers import MBartTokenizer
 
     class args:
         batch_size: int = 2
@@ -107,7 +137,7 @@ if __name__ == '__main__':
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-cc25")
     dl = DataLoader(tokenizer, args)
     tr_dataset, val_dataset = dl.setup()
-    
+
     tr_dataset = dl.train_dataloader(tr_dataset)
     val_dataset = dl.val_dataloader(val_dataset)
 
@@ -115,4 +145,3 @@ if __name__ == '__main__':
         pass
     print(tokenizer.convert_ids_to_tokens(ds.input_ids[0]))
     print(tokenizer.convert_ids_to_tokens(ds.labels[0]))
-    print(dl.sep_token)
