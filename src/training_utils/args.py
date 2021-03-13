@@ -5,9 +5,9 @@ from dataclasses import dataclass, field, replace
 class TrainingArgs:
 
     lr: float = 1.e-5
-    batch_size: int = 2
+    batch_size: int = 1
     max_epochs: int = 10
-    accumulation_steps: int = 4
+    accumulation_steps: int = 8
 
     num_workers: int = 2
     max_length: int = 512
@@ -15,12 +15,13 @@ class TrainingArgs:
     process_on_fly: bool = False
 
     file_path: str = "data/dev_data_article.csv"
-    pretrained_model_id: str = "facebook/mbart-large-cc25"
+    pretrained_model_id: str = "mbart-summarizer/mbart-finetuned-summary-e3"
+    pretrained_tokenizer_id: str = "facebook/mbart-large-cc25"
     weights_dir: str = "mbart-finetuned-summary"
     # hub_id: str = "mbart"
 
     base_dir: str = "mbart-summarizer"
-    wandb_run_name: str = "dummy"
+    wandb_run_name: str = "None"
     project_name: str = "interiit-mbart"
 
 baseline = TrainingArgs()

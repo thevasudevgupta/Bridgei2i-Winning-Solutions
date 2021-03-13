@@ -1,1 +1,0 @@
-Put model weights/ artifacts in this directory.

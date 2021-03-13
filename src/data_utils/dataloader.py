@@ -36,7 +36,7 @@ def infer_bart_on_sample(sample, model, tokenizer, max_pred_length):
     model.to(device)
     model.eval()
 
-    sample = tokenizer(sample, return_tensors="pt")
+    sample = tokenizer(sample, return_tensors="pt", max_length=544, truncation=True)
 
     for k in sample:
         sample[k] = sample[k].to(device)

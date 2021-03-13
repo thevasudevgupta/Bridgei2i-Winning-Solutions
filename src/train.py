@@ -18,7 +18,7 @@ if __name__ == '__main__':
     args.update(getattr(training_utils, "baseline").__dict__)
 
     model = MBartForConditionalGeneration.from_pretrained(args.pretrained_model_id)
-    tokenizer = MBartTokenizer.from_pretrained(args.pretrained_model_id)
+    tokenizer = MBartTokenizer.from_pretrained(args.pretrained_tokenizer_id)
 
     dl = DataLoader(tokenizer, args)
     tr_dataset, val_dataset, combined_data = dl.setup(process_on_fly=args.process_on_fly)
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     fn_kwargs = {
       "model": model,
       "tokenizer": tokenizer,
-      "max_pred_length": 32,
+      "max_pred_length": 44,
     }
     combined_data = combined_data.map(summarize, fn_kwargs=fn_kwargs)
     combined_data.to_csv(os.path.join(args.base_dir, "predictions.csv"))
