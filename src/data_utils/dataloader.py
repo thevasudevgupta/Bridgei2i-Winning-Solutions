@@ -28,26 +28,27 @@ def preprocess_article(article, sep_token="</s>"):
     article = re.sub("\n", ".", article)
     return article.strip()
 
+def infer_bart_on_sample(sample, model, tokenizer, max_pred_length):
+
+    device = torch.device("cpu")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    model.to(device)
+    model.eval()
+
+    sample = tokenizer(sample, return_tensors="pt")
+
+    for k in sample:
+        sample[k] = sample[k].to(device)
+
+    out = model.generate(**sample, decoder_start_token_id=tokenizer.lang_code_to_id["en_XX"], max_length=max_pred_length)
+    sample = tokenizer.batch_decode(out, skip_special_tokens=True)[0]
+    print(sample)
+
+    return sample
+
 def translate(example, model, tokenizer, max_pred_length=32):
-
-    def get_translation(sample):
-
-        device = torch.device("cpu")
-        if torch.cuda.is_available():
-            device = torch.device("cuda")
-        model.to(device)
-        model.eval()
-
-        sample = tokenizer(sample, return_tensors="pt")
-
-        for k in sample:
-            sample[k] = sample[k].to(device)
-
-        out = model.generate(**sample, decoder_start_token_id=tokenizer.lang_code_to_id["en_XX"], max_length=max_pred_length)
-        sample = tokenizer.batch_decode(out, skip_special_tokens=True)
-        return sample[0]
-
-    example["CleanedHeadline"] = get_translation(example["Headline"])
+    example["CleanedHeadline"] = infer_bart_on_sample(example["Headline"], model, tokenizer, max_pred_length)
     return example
 
 
@@ -89,12 +90,20 @@ class DataLoader(object):
         else:
             data = load_dataset("csv", data_files=f"cleaned-{self.file_path}")["train"]
 
-        print("Samples with article length > 560 are", data.filter(lambda x: x["article_length"] > 560))
+        data = data.filter(lambda x: x["article_length"] > 32 and x["summary_length"] > 1)
+
+        removed_samples = data.filter(lambda x: type(x["CleanedHeadline"]) != str or type(x["CleanedText"]) != str)
+        print(removed_samples["CleanedHeadline"])
+        print(removed_samples["CleanedText"])
+
+        data = data.filter(lambda x: type(x["CleanedHeadline"]) == str and type(x["CleanedText"]) == str)
+        print("Dataset", data)
+
+        # print("Samples with article length > 560 are", data.filter(lambda x: x["article_length"] > 560))
 
         lengths = [len(data)-600, 600]
-        tr_dataset, val_dataset = torch.utils.data.random_split(data, lengths=lengths)
-
-        return tr_dataset, val_dataset
+        tr_dataset, val_dataset = torch.utils.data.random_split(data, lengths=lengths, generator=torch.Generator().manual_seed(42))
+        return tr_dataset, val_dataset, data
 
     def train_dataloader(self, tr_dataset):
         return torch.utils.data.DataLoader(
@@ -117,7 +126,6 @@ class DataLoader(object):
         )
 
     def collate_fn(self, features):
-        # update your collate function here
         article = [f["CleanedText"] for f in features]
         summary = [f["CleanedHeadline"] for f in features]
 
@@ -134,7 +142,7 @@ if __name__ == '__main__':
 
     class args:
         batch_size: int = 2
-        process_on_fly: bool = True
+        process_on_fly: bool = False
         num_workers: int = 2
         max_length: int = 512
         max_target_length: int = 20
@@ -142,6 +150,7 @@ if __name__ == '__main__':
 
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-cc25")
     dl = DataLoader(tokenizer, args)
+
     tr_dataset, val_dataset = dl.setup(process_on_fly=args.process_on_fly)
 
     tr_dataset = dl.train_dataloader(tr_dataset)

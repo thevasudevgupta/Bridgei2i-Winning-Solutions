@@ -104,7 +104,7 @@ class TrainerConfig(object):
                 map_location=torch.device("cuda:0"),
                 # model weights will be in `.pt` file 
                 # while other training stuff will be in `.tar`  
-                save_dir="resuming",
+                save_dir=None,
                 load_dir=None,
                 save_epoch_dir=None,
                 early_stop_n=None,
@@ -432,7 +432,6 @@ class TrainingLoop(ABC, TrainerSetup):
             desc = f"running epoch-{epoch}"
             pbar = tqdm(enumerate(tr_dataset), total=len(tr_dataset), desc=desc, initial=0, leave=False)
             for batch_idx, batch in pbar:
-
                 # will help in resuming training from last-saved batch_idx
                 if batch_idx != self.start_batch_idx:
                     steps += 1
