@@ -38,13 +38,14 @@ def translate(example, model, tokenizer, max_pred_length=32):
         model.to(device)
         model.eval()
 
-        sample = tokenizer(src_texts=sample, return_tensors="pt")
+        sample = tokenizer(sample, return_tensors="pt")
+
         for k in sample:
             sample[k] = sample[k].to(device)
 
         out = model.generate(**sample, decoder_start_token_id=tokenizer.lang_code_to_id["en_XX"], max_length=max_pred_length)
         sample = tokenizer.batch_decode(out, skip_special_tokens=True)
-        return sample
+        return sample[0]
 
     example["CleanedHeadline"] = get_translation(example["Headline"])
     return example
@@ -66,23 +67,27 @@ class DataLoader(object):
 
         self.sep_token = self.tokenizer.convert_ids_to_tokens(self.tokenizer.sep_token_id)
 
-    def setup(self):
+    def setup(self, process_on_fly=True):
 
-        data = load_dataset("csv", data_files=self.file_path)["train"]
-        data = data.map(lambda x: {"article_length": len(x["Text"].split())})
-        data = data.map(lambda x: {"summary_length": len(x["Headline"].split())})
+        if process_on_fly:
+            data = load_dataset("csv", data_files=self.file_path)["train"]
+            data = data.map(lambda x: {"article_length": len(x["Text"].split())})
+            data = data.map(lambda x: {"summary_length": len(x["Headline"].split())})
 
-        data = data.map(lambda x: {"CleanedText": preprocess_article(x["Text"], self.sep_token)})
+            data = data.map(lambda x: {"CleanedText": preprocess_article(x["Text"], self.sep_token)})
 
-        data = data.map(lambda x: {"CleanedHeadline": x["Headline"]})
-        # fn_kwargs = {
-        #     "model": MBartForConditionalGeneration.from_pretrained("vasudevgupta/mbart-large-cc25"),
-        #     "tokenizer": MBartTokenizer.from_pretrained("vasudevgupta/mbart-iitb-hin-eng"),
-        #     "max_pred_length": 32,
-        # }
+            data = data.map(lambda x: {"CleanedHeadline": x["Headline"]})
+            fn_kwargs = {
+                "model": MBartForConditionalGeneration.from_pretrained("vasudevgupta/mbart-iitb-hin-eng"),
+                "tokenizer": MBartTokenizer.from_pretrained("vasudevgupta/mbart-iitb-hin-eng"),
+                "max_pred_length": 32,
+            }
 
-        # data = data.map(translate, fn_kwargs=fn_kwargs)
-        # print([data[i]["CleanedHeadline"] for i in range(10)])
+            data = data.map(translate, fn_kwargs=fn_kwargs)
+            data.to_csv(f"cleaned-{self.file_path}")
+
+        else:
+            data = load_dataset("csv", data_files=f"cleaned-{self.file_path}")["train"]
 
         print("Samples with article length > 560 are", data.filter(lambda x: x["article_length"] > 560))
 
@@ -129,6 +134,7 @@ if __name__ == '__main__':
 
     class args:
         batch_size: int = 2
+        process_on_fly: bool = True
         num_workers: int = 2
         max_length: int = 512
         max_target_length: int = 20
@@ -136,12 +142,7 @@ if __name__ == '__main__':
 
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-cc25")
     dl = DataLoader(tokenizer, args)
-    tr_dataset, val_dataset = dl.setup()
+    tr_dataset, val_dataset = dl.setup(process_on_fly=args.process_on_fly)
 
     tr_dataset = dl.train_dataloader(tr_dataset)
     val_dataset = dl.val_dataloader(val_dataset)
-
-    for ds in val_dataset:
-        pass
-    print(tokenizer.convert_ids_to_tokens(ds.input_ids[0]))
-    print(tokenizer.convert_ids_to_tokens(ds.labels[0]))
