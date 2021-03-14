@@ -11,6 +11,13 @@ def summarize(sample, model, tokenizer, max_pred_length=32):
     sample["predicted_summary"] = infer_bart_on_sample(sample["CleanedText"], model, tokenizer, max_pred_length)
     return sample
 
+def assign_split(x, samples):
+    x["split"] = None
+    if x['Text_ID'] in samples:
+        x["split"] = "TRAIN"
+    else:
+        x["split"] = "VALIDATION"
+    return x
 
 if __name__ == '__main__':
 
@@ -40,4 +47,10 @@ if __name__ == '__main__':
       "max_pred_length": 44,
     }
     combined_data = combined_data.map(summarize, fn_kwargs=fn_kwargs)
+
+    samples = []
+    for s in tr_dataset:
+        samples.append(s['Text_ID'])
+
+    combined_data = combined_data.map(assign_split, fn_kwargs=dict(samples=samples))
     combined_data.to_csv(os.path.join(args.base_dir, "predictions.csv"))

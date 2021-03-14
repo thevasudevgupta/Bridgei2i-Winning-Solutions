@@ -151,7 +151,7 @@ if __name__ == '__main__':
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-cc25")
     dl = DataLoader(tokenizer, args)
 
-    tr_dataset, val_dataset = dl.setup(process_on_fly=args.process_on_fly)
+    tr_dataset, val_dataset, _ = dl.setup(process_on_fly=args.process_on_fly)
 
     tr_dataset = dl.train_dataloader(tr_dataset)
     val_dataset = dl.val_dataloader(val_dataset)
