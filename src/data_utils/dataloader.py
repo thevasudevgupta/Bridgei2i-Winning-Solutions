@@ -1,8 +1,14 @@
 import torch
 
 import re
-from datasets import load_dataset
+from datasets import load_dataset, concatenate_datasets
 from transformers import MBartForConditionalGeneration, MBartTokenizer
+
+import random
+from nltk.corpus import wordnet, stopwords
+
+STOP_WORDS = stop_words = set(stopwords.words('english'))
+
 
 def preprocess_article(article, sep_token="</s>"):
 
@@ -27,6 +33,33 @@ def preprocess_article(article, sep_token="</s>"):
     article = re.sub("\n\n", sep_token, article)
     article = re.sub("\n", ".", article)
     return article.strip()
+
+
+def get_noisy_sent(word_list, v=1):
+
+    def get_synonyms(word):
+        synonyms = set()
+        for syn in wordnet.synsets(word):
+            for l in syn.lemmas():
+                synonym = l.name().replace("_", " ").replace("-", " ").lower()
+                synonym = "".join([char for char in synonym if char in " qwertyuiopasdfghjklzxcvbnm"])
+                synonyms.add(synonym)
+        if word in synonyms:
+            synonyms.remove(word)
+        return list(synonyms)
+
+    n = int(v*len(word_list))
+    not_stopwords = list(set([word for word in word_list if word not in STOP_WORDS]))
+    rand_word_list = random.choices(not_stopwords, k=min(n, len(not_stopwords)))
+
+    for word in rand_word_list:
+        synonyms = get_synonyms(word)
+        if len(synonyms) >= 1:
+            synonym = random.choice(synonyms)
+            word_list = [synonym if w == word else w for w in word_list]
+
+    return ' '.join(word_list)
+
 
 def infer_bart_on_sample(sample, model, tokenizer, max_pred_length):
 
@@ -65,10 +98,11 @@ class DataLoader(object):
         self.file_path = args.file_path
 
         self.tokenizer = tokenizer
-
         self.sep_token = self.tokenizer.convert_ids_to_tokens(self.tokenizer.sep_token_id)
 
-    def setup(self, process_on_fly=True):
+        self.seed = args.seed
+
+    def setup(self, process_on_fly=True, augment=False):
 
         if process_on_fly:
             data = load_dataset("csv", data_files=self.file_path)["train"]
@@ -101,9 +135,20 @@ class DataLoader(object):
 
         # print("Samples with article length > 560 are", data.filter(lambda x: x["article_length"] > 560))
 
-        lengths = [len(data)-600, 600]
-        tr_dataset, val_dataset = torch.utils.data.random_split(data, lengths=lengths, generator=torch.Generator().manual_seed(42))
-        return tr_dataset, val_dataset, data
+        data = data.train_test_split(test_size=600, shuffle=True, seed=self.seed)
+        tr_dataset = data["train"].map(lambda x: {"split": "TRAIN"})
+        val_dataset = data["test"].map(lambda x: {"split": "VALIDATION"})
+
+        if augment:
+            print("AUGMENTING")
+            tr_dataset = tr_dataset.map(lambda x: {"augmentation_status": "Not Augmented"})
+            val_dataset = val_dataset.map(lambda x: {"augmentation_status": "Not Augmented"})
+            noisy_dataset = tr_dataset.filter(lambda x: x["Mobile_Tech_Flag"] == 1)
+            noisy_dataset = noisy_dataset.map(lambda x: {"CleanedText": get_noisy_sent(x["CleanedText"].split())})
+            noisy_dataset = noisy_dataset.map(lambda x: {"augmentation_status": "Augmented"})
+            tr_dataset = concatenate_datasets([noisy_dataset, tr_dataset])
+
+        return tr_dataset, val_dataset
 
     def train_dataloader(self, tr_dataset):
         return torch.utils.data.DataLoader(
@@ -126,6 +171,7 @@ class DataLoader(object):
         )
 
     def collate_fn(self, features):
+
         article = [f["CleanedText"] for f in features]
         summary = [f["CleanedHeadline"] for f in features]
 
@@ -147,11 +193,25 @@ if __name__ == '__main__':
         max_length: int = 512
         max_target_length: int = 20
         file_path: str = "data/dev_data_article.csv"
+        seed: int = 42
 
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-cc25")
     dl = DataLoader(tokenizer, args)
 
-    tr_dataset, val_dataset, _ = dl.setup(process_on_fly=args.process_on_fly)
+    tr_dataset, val_dataset = dl.setup(process_on_fly=args.process_on_fly, augment=True)
+
+    print(val_dataset)
+    print(tr_dataset)
+
+    dataset = concatenate_datasets([tr_dataset, val_dataset]).sort('Text_ID')
+    print(dataset)
+
+    print(tr_dataset[:2])
 
     tr_dataset = dl.train_dataloader(tr_dataset)
     val_dataset = dl.val_dataloader(val_dataset)
+
+    for s in val_dataset:
+        pass
+
+    print(s)

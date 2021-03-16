@@ -13,15 +13,17 @@ class TrainingArgs:
     max_length: int = 512
     max_target_length: int = 32
     process_on_fly: bool = False
+    seed: int = 42
+    augment: bool = True
 
     file_path: str = "data/dev_data_article.csv"
-    pretrained_model_id: str = "mbart-summarizer/mbart-finetuned-summary-e3"
+    pretrained_model_id: str = "facebook/mbart-large-cc25"
     pretrained_tokenizer_id: str = "facebook/mbart-large-cc25"
-    weights_dir: str = "mbart-finetuned-summary"
+    weights_dir: str = "mbart-augmented-summary-experiment-2"
     # hub_id: str = "mbart"
 
-    base_dir: str = "mbart-summarizer"
-    wandb_run_name: str = "None"
+    base_dir: str = "mbart-augmented-summary-experiment-2"
+    wandb_run_name: str = "mbart-augmented-summary-experiment-2"
     project_name: str = "interiit-mbart"
 
 baseline = TrainingArgs()
