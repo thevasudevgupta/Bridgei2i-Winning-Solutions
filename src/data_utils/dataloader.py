@@ -102,7 +102,7 @@ class DataLoader(object):
 
         self.seed = args.seed
 
-    def setup(self, process_on_fly=True, augment=False):
+    def setup(self, process_on_fly=True, n_augment=0):
 
         if process_on_fly:
             data = load_dataset("csv", data_files=self.file_path)["train"]
@@ -139,13 +139,18 @@ class DataLoader(object):
         tr_dataset = data["train"].map(lambda x: {"split": "TRAIN"})
         val_dataset = data["test"].map(lambda x: {"split": "VALIDATION"})
 
-        if augment:
+        if n_augment > 0:
             print("AUGMENTING")
             tr_dataset = tr_dataset.map(lambda x: {"augmentation_status": "Not Augmented"})
             val_dataset = val_dataset.map(lambda x: {"augmentation_status": "Not Augmented"})
             noisy_dataset = tr_dataset.filter(lambda x: x["Mobile_Tech_Flag"] == 1)
-            noisy_dataset = noisy_dataset.map(lambda x: {"CleanedText": get_noisy_sent(x["CleanedText"].split())})
+            
+            noisy_datasets = []
+            for _ in range(n_augment):
+                noisy_datasets.append(noisy_dataset.map(lambda x: {"CleanedText": get_noisy_sent(x["CleanedText"].split())}))
+            noisy_dataset = concatenate_datasets(noisy_datasets)
             noisy_dataset = noisy_dataset.map(lambda x: {"augmentation_status": "Augmented"})
+
             tr_dataset = concatenate_datasets([noisy_dataset, tr_dataset])
 
         return tr_dataset, val_dataset
@@ -194,11 +199,12 @@ if __name__ == '__main__':
         max_target_length: int = 20
         file_path: str = "data/dev_data_article.csv"
         seed: int = 42
+        n_augment: int = 1
 
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-cc25")
     dl = DataLoader(tokenizer, args)
 
-    tr_dataset, val_dataset = dl.setup(process_on_fly=args.process_on_fly, augment=True)
+    tr_dataset, val_dataset = dl.setup(process_on_fly=args.process_on_fly, n_augment=args.n_augment)
 
     print(val_dataset)
     print(tr_dataset)

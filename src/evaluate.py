@@ -7,7 +7,7 @@ GENSIM = False # True False
 
 if __name__ == '__main__':
 
-    data = load_dataset("csv", data_files="predictions-augment-exp2.csv")["train"]
+    data = load_dataset("csv", data_files="results/predictions.csv")["train"]
     data = data.map(lambda x: {"predicted_summary": re.sub("</sep>", "\n", x["predicted_summary"])})
 
     if GENSIM:
@@ -20,7 +20,7 @@ if __name__ == '__main__':
         "wer": load_metric("wer"),
     }
 
-    data = data.filter(lambda x: x["split"] == "VALIDATION" and x["Mobile_Tech_Flag"] == 1)
+    data = data.filter(lambda x: x["split"] == "TRAIN")
     print(data)
 
     scores = {}

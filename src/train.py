@@ -28,14 +28,14 @@ if __name__ == '__main__':
     tokenizer = MBartTokenizer.from_pretrained(args.pretrained_tokenizer_id)
 
     dl = DataLoader(tokenizer, args)
-    tr_dataset, val_dataset = dl.setup(process_on_fly=args.process_on_fly, augment=arg.augment)
+    tr_dataset, val_dataset = dl.setup(process_on_fly=args.process_on_fly, n_augment=args.n_augment)
     print(tr_dataset, val_dataset)
 
     tr_dataset = dl.train_dataloader(tr_dataset)
     val_dataset = dl.val_dataloader(val_dataset)
 
-    tr_dataset = [next(iter(tr_dataset)) for i in range(6)]
-    val_dataset = [next(iter(val_dataset)) for i in range(6)]
+    # tr_dataset = [next(iter(tr_dataset)) for i in range(6)]
+    # val_dataset = [next(iter(val_dataset)) for i in range(6)]
 
     trainer = Trainer(model, args)
     trainer.fit(tr_dataset, val_dataset)
@@ -48,7 +48,8 @@ if __name__ == '__main__':
       "max_pred_length": 44,
     }
     combined_data = concatenate_datasets([tr_dataset, val_dataset]).sort('Text_ID')
-    combined_data.to_csv(os.path.join(args.base_dir, "augmented-cleaned-data.csv"))
+    combined_data = combined_data.filter(lambda x: x["augmentation_status"] == "Not Augmented")
+    print("COMBINED DATA", combined_data)
     combined_data = combined_data.map(summarize, fn_kwargs=fn_kwargs)
 
     # samples = []
