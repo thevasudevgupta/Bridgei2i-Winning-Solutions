@@ -40,8 +40,6 @@ if __name__ == '__main__':
     trainer = Trainer(model, args)
     trainer.fit(tr_dataset, val_dataset)
 
-    del trainer
-    del dl
     fn_kwargs = {
       "model": model,
       "tokenizer": tokenizer,
