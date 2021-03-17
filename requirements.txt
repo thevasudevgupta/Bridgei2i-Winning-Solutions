@@ -1,0 +1,9 @@
+torch
+numpy
+wandb
+tqdm
+PyYAML
+huggingface_hub
+datasets
+transformers
+sentencepiece
