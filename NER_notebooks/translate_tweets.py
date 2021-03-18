@@ -42,5 +42,5 @@ if __name__ == '__main__':
         "max_pred_length": 96,
     }
 
-    data = data.map(lambda x: {"CleanedTweet": translate(x["Tweet"])})
+    data = data.map(lambda x: {"CleanedTweet": translate(x["Tweet"], **fn_kwargs)})
     data.to_csv(os.path.join("cleaned", FILE_PATH))
