@@ -27,7 +27,7 @@ import emoji
 
 #Reading the file
 #Take the location to read from as input in the final version
-data_tweet=pd.read_excel('/content/dev_data_tweet.xlsx')
+#data_tweet=pd.read_excel('/content/dev_data_tweet.xlsx')
 
 tokenizer = ToktokTokenizer()
 stopword_list = nltk.corpus.stopwords.words('english')
@@ -163,14 +163,31 @@ def expand_contractions(text, contraction_mapping=contraction_mapping):
 #    text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8', 'ignore')
 #    return text          
 
-data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_handle_names(x))
-data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_https(x))
-data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:strip_html_tags(x))
-data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:expand_contractions(x))
-data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_punct(x))
-data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:demojize(x))
-data_tweet['Tweet'] = data_tweet['Tweet'].apply(lambda x : re.sub('_', '', x))
-#data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_stopwords(x))
+# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_handle_names(x))
+# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_https(x))
+# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:strip_html_tags(x))
+# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:expand_contractions(x))
+# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_punct(x))
+# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:demojize(x))
+# data_tweet['Tweet'] = data_tweet['Tweet'].apply(lambda x : re.sub('_', '', x))
+# #data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_stopwords(x))
 
 #Change the location to place where you want to save the Cleaned file
-data_tweet.to_csv('tweets_clean.csv', index = False)
+#data_tweet.to_csv('tweets_clean.csv', index = False)
+
+def clean_text(text):
+  text=remove_handle_names(text)
+  text=remove_https(text)
+  text=strip_html_tags(text)
+  text=expand_contractions(text)
+  text=remove_punct(text)
+  text=demojize(text)
+  text=re.sub('_', '', text)
+  text=re.sub('\n','',text)
+  text=re.sub('[0-9]',' ',text)
+  return(text)
+
+#Sample function call
+#clean_text('#Bought Nokia6.1Plus in Oct2018 and having worst exp. evn battery got die soon & #phone hang like a 1GB RAM #mobile #Requesting u to sort it out asap Definitely Cant  continue wid dis one & putting blam on #Nokia #bad #experience @nokia @NokiamobileIN @ANI @abpnewstv @NokiaMobile')
+#Sample output
+#'Bought Nokia  Plus in Oct     and having worst exp evn battery got die soon phone hang like a  GB RAM mobile Requesting u to sort it out asap Definitely Cant continue wid dis one putting blam on Nokia bad experience'
