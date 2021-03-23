@@ -26,11 +26,6 @@ import aspect_based_sentiment_analysis as absa
 from textblob import TextBlob
 import spacy
 
-#nlp1=spacy.load('en_core_web_sm')
-#nlp = absa.load()
-  
-
-
 #Exhaustive_list of Mobile brands
 #This list is used to identify the mobile_brands from the set of named entities which exist in the sentence
 #List consist of all mobile brands (existing, defunct and brands which are no longer associated with mobiles)
@@ -312,21 +307,21 @@ nlp1=spacy.load('en_core_web_sm') #all the operations are carried out using Spac
 def predict_asba(text,lis,bi_gram_first,bi_gram_sec):
   
   def id_mobile_comp(text,lis,nlp,bi_gram_first,bi_gram_sec):
-    #We store all the entities in a list called Ent_lis
+    #store all the entities in a list called Ent_lis
     ent_lis=[]
-    #We tokenize the input text into corresponding tokens
+    #tokenize the input text into corresponding tokens
     words=nltk.word_tokenize(text) #words is a list consisting of individual tokens
     
     i=0
     while(i<len(words)):
-      #We check on word at a time
-      #We identify if the word is a mobile brand or not
-      #We check for the possibility of the current word being beggining of a bi-gram or unigram or non-mobile brand word 
+      #check on word at a time
+      #identify if the word is a mobile brand or not
+      #check for the possibility of the current word being beggining of a bi-gram or unigram or non-mobile brand word 
       if((words[i].upper() in lis) and (words[i].upper() not in bi_gram_first) ):
-          ent_lis.append(words[i]) #We first collect the Unigrams
+          ent_lis.append(words[i]) #first collect the Unigrams
           #If it was the first word of a bi-gram we switch to the else loop
       else:
-        #We check if the first word a bi-gram occurs at the end of a sentence,if so we discard it.
+        #check if the first word a bi-gram occurs at the end of a sentence,if so we discard it.
         #If we have not the reached the end of the sentence, we go ahead and check the next word.
         #If the second word occursin bi_gram_sec the we note both of them together as an entity
         if(i+1!=len(words)):
@@ -342,7 +337,7 @@ def predict_asba(text,lis,bi_gram_first,bi_gram_sec):
   entity_lis=id_mobile_comp(text,lis,nlp1,bi_gram_first,bi_gram_sec)
 
   def find_aspect_senti(text,aspect,nlp):
-    #We create a object of the asba class
+    #create a object of the asba class
     #This is then used to identify the sentiment of aspects(identified entities) in the input sentence
     var=nlp(text,aspects=[aspect])
     if(var.examples[0].sentiment==absa.Sentiment.negative):
@@ -358,13 +353,13 @@ def predict_asba(text,lis,bi_gram_first,bi_gram_sec):
   	senti_dict[word]=0 # Intializing all the entities to have a neutral sentiment
 
   for word in entity_lis:
-    senti_dict[word]+=find_aspect_senti(text,word,nlp) # We add the sentiment score corresponding to each word from the entity list
+    senti_dict[word]+=find_aspect_senti(text,word,nlp) # add the sentiment score corresponding to each word from the entity list
     # This summation of sentiment_score helps us account for multiple exisitence of a single entity in a sentence  
     # Total sentiment_score is then used to allocate the final sentiment. 
   sent_dict1={}
   
   #Using the final sentiment scores of each entity we identify thier corresoonding sentiment.
-  #Sign of total sentiment_score is predicted as the entitie's sentiment. 
+  #Sign of total sentiment_score is predicted as the entity's sentiment. 
   for word in entity_lis:
     if(senti_dict[word]>0):
     	sent_dict1[word]='positive'
