@@ -22,7 +22,7 @@ import unicodedata
 
 
 !pip install aspect-based-sentiment-analysis
-
+import aspect_based_sentiment_analysis as absa
 from textblob import TextBlob
 import spacy
 
@@ -298,6 +298,9 @@ lis_=['CONDOR',
 bi_gram_first=['HMD','VK','TEL','T','SONY','I','GARSUS','BENQ','HEWLETT','BULLITT','GIGABYTE','KT','ALLVIEW','M','X','TECHNOLOGY','NINGBO','VOICE','CHERRY','GROUPE']
 bi_gram_sec=['GLOBAL','MOBILE','ME','MOBILE','ERICSSON','MATE','ASUS','SIEMENS','PACKARD','GROUP','TECHNOLOGY','TECH','EVOLIO','DOT','TIGI','HAPPYLIFE','BIRD','MOBILE','MOBILE','BULL']
 
+nlp = absa.load()
+nlp1=spacy.load('en_core_web_sm')
+
 def predict_asba(text,lis,bi_gram_first,bi_gram_sec):
   nlp = absa.load()
   nlp1=spacy.load('en_core_web_sm')
@@ -351,9 +354,4 @@ def predict_asba(text,lis,bi_gram_first,bi_gram_sec):
     else:
     	sent_dict1[word]='neutral'
     	
-  return(sent_dict1)  
-
-
-  
-
-
+  return(sent_dict1)
