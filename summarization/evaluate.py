@@ -11,7 +11,7 @@ GENSIM = False # True False
 
 if __name__ == '__main__':
 
-    headline_similarity_model = None # SentenceTransformer('bert-base-nli-mean-tokens')
+    headline_similarity_model = SentenceTransformer('bert-base-nli-mean-tokens')
     calculate_bleu = True
 
     data = load_dataset("csv", data_files="results/predictions-augment-exp2.csv")["train"]
@@ -22,9 +22,9 @@ if __name__ == '__main__':
         data = data.filter(lambda x: x["gensim_summary"] is not None)
 
     metrics = {
-        # "sacrebleu": load_metric("sacrebleu"),
-        # "rouge": load_metric("rouge"),
-        # "wer": load_metric("wer"),
+        "sacrebleu": load_metric("sacrebleu"),
+        "rouge": load_metric("rouge"),
+        "wer": load_metric("wer"),
     }
 
     data = data.filter(lambda x: x["split"] == "VALIDATION")
