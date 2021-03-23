@@ -78,14 +78,14 @@ class CNNModel(nn.Module):
         else:
             return x
     
-    def load_ckpt(self, fname):
-        self.load_state_dict(torch.load(fname))
-    
-    def eval(self, text, w2ind, device=torch.device("cuda")):
+    def load_ckpt(self, fname, map_location="cpu"):
+        self.load_state_dict(torch.load(fname, map_location=map_location))
+
+    def eval_text(self, text, w2ind, device=torch.device("cuda")):
         with torch.no_grad():
             sent = phoneme.conv_phoneme(text)
         sent = [w2ind[w] for w in sent][0: 500]
-        sent = torch.LongTensor(sent).to(device)[None, :, :]
+        sent = torch.LongTensor(sent).to(device)[None, :]
         pred_logits = self.forward(sent)
         pred_cls = pred_logits.max(1)[1].item()
         if pred_cls == 0:
