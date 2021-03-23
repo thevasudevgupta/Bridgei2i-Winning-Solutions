@@ -22,12 +22,12 @@ from bs4 import BeautifulSoup
 !pip install emoji
 import emoji
 
-!pip install indic-transliteration
-from indic_transliteration import sanscript 
-from indic_transliteration.sanscript import transliterate 
-import json
-import requests
-from urllib.parse import  quote
+#!pip install indic-transliteration
+#from indic_transliteration import sanscript 
+#from indic_transliteration.sanscript import transliterate 
+#import json
+#import requests
+#from urllib.parse import  quote
 
 !pip install datasets
 !pip install transformers
