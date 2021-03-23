@@ -6,3 +6,7 @@ datasets
 transformers
 sentencepiece
 sacrebleu
+aspect-based-sentiment-analysis
+
+# nltk.download('punkt')
+# nltk.download('stopwords')
