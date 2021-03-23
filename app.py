@@ -1,8 +1,11 @@
 # streamlit run app.py
 
+import sys
+sys.path.append("./summarization")
+from data_utils.dataloader import infer_bart_on_sample
+
 import streamlit as st
 from transformers import MBartForConditionalGeneration, MBartTokenizer
-from transformers.pipelines import pipeline
 
 SUMMARIZER_ID = "weights/mbart-finetuned-exp2-e2"
 
@@ -17,19 +20,21 @@ def get_summarization_agents():
 def write_header():
     st.title('InterIIT 2021 solution')
     st.markdown('''
-        - We have built an end2end pipeline as a solution.
+        We have built an end2end pipeline as a solution.
+
+        *Note: This app may take upto 5 minutes for initial setup*
     ''')
 
 def summarize():
-    summarization_agent = get_summarization_agents()
+    agent = get_summarization_agents()
 
     article = st.text_area("Leave your article here")
     summarize_button = st.button("update")
 
     if summarize_button and len(article) > 1:
-        summarizer = pipeline("summarization", model=summarization_agent["model"], tokenizer=summarization_agent["tokenizer"])
-        summary = summarizer(article, max_length=32)
-        st.markdown(summary)
+        with st.spinner('summarizing ...'):    
+            summary = infer_bart_on_sample(article, agent["model"], agent["tokenizer"], max_pred_length=44)
+            st.markdown(summary)
 
     return summarize
 
