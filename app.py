@@ -1,7 +1,14 @@
 
 import torch
 import streamlit as st
-from transformers import MBartForConditionalGeneration, MBartTokenizer
+import logging
+
+logger = logging.getLogger(__name__)
+
+try:
+    from transformers import MBartForConditionalGeneration, MBartTokenizer
+except:
+    logger.warning("Couldn't import mBART; it's expected if you are running `app_ner.py`")
 
 import sys
 sys.path.append("./text-cls")
@@ -113,6 +120,3 @@ if __name__ == '__main__':
         if len(text) > 280:
             text = summarize(text, agent)
             st.markdown(f"**Headline:** {text}")
-
-    # ner_output = perform_ner(text)
-    # st.markdown(f"NER: {ner_output}")
