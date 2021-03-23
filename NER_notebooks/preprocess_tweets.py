@@ -73,11 +73,11 @@ def strip_html_tags(text):
     stripped_text = soup.get_text()
     return stripped_text    
 
-def removebs(x):
-    if ('2021|' in x and 'IST' in x) | ('404 Error' in x ):
-        return ""
-    else:
-        return x 
+#def removebs(x):
+#    if ('2021|' in x and 'IST' in x) | ('404 Error' in x ):
+#        return ""
+#    else:
+#        return x 
         
 def remove_punct(texts):
   punkts='!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
