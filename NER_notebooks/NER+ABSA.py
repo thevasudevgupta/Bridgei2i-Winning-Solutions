@@ -26,11 +26,6 @@ import aspect_based_sentiment_analysis as absa
 from textblob import TextBlob
 import spacy
 
-#nlp1=spacy.load('en_core_web_sm')
-#nlp = absa.load()
-  
-
-
 #Exhaustive_list of Mobile brands
 
 lis_=['CONDOR',
