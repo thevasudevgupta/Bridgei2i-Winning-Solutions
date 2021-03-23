@@ -1,0 +1,18 @@
+numpy
+pandas 
+nltk
+string
+unicodedata
+re
+
+nltk.download('punkt')
+nltk.download('wordnet')
+nltk.download('stopwords')
+from nltk.stem import PorterStemmer
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from nltk.corpus import stopwords
+from nltk.corpus import wordnet
+from nltk.tokenize import word_tokenize
+from nltk.tokenize.toktok import ToktokTokenizer
+from textblob import TextBlob
