@@ -350,3 +350,9 @@ def predict_asba(text,lis,bi_gram_first,bi_gram_sec):
     	sent_dict1[word]='neutral'
     	
   return(sent_dict1)
+ 
+#Sample Function call 
+#predict_asba('HMD GLOBAL is great',lis_,bi_gram_first,bi_gram_sec)
+#Sample output
+#{'HMD GLOBAL': 'positive'}
+ 
