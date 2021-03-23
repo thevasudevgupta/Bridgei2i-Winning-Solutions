@@ -22,12 +22,22 @@ from bs4 import BeautifulSoup
 !pip install emoji
 import emoji
 
+!pip install indic-transliteration
+from indic_transliteration import sanscript 
+from indic_transliteration.sanscript import transliterate 
+import json
+import requests
+from urllib.parse import  quote
 
+!pip install datasets
+!pip install transformers
+!pip install sentencepiece
 
+import torch
+import os
+from datasets import load_dataset
+from transformers import MBartForConditionalGeneration, MBartTokenizer
 
-#Reading the file
-#Take the location to read from as input in the final version
-#data_tweet=pd.read_excel('/content/dev_data_tweet.xlsx')
 
 tokenizer = ToktokTokenizer()
 stopword_list = nltk.corpus.stopwords.words('english')
@@ -63,7 +73,12 @@ def strip_html_tags(text):
     stripped_text = soup.get_text()
     return stripped_text    
 
-
+def removebs(x):
+    if ('2021|' in x and 'IST' in x) | ('404 Error' in x ):
+        return ""
+    else:
+        return x 
+        
 def remove_punct(texts):
   punkts='!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
   lis=[]
@@ -157,25 +172,47 @@ def expand_contractions(text, contraction_mapping=contraction_mapping):
     expanded_text = re.sub("'", "", expanded_text)
     return expanded_text  
 
-   
+def translate(sample, model, tokenizer, max_pred_length):
+
+    device = torch.device("cpu")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    model.to(device)
+    model.eval()
+
+    sample = tokenizer(sample, return_tensors="pt", max_length=544, truncation=True)
+
+    for k in sample:
+        sample[k] = sample[k].to(device)
+
+    out = model.generate(**sample, decoder_start_token_id=tokenizer.lang_code_to_id["en_XX"], max_length=max_pred_length)
+    sample = tokenizer.batch_decode(out, skip_special_tokens=True)[0]
+    #print(sample)
+
+    return sample
+
+
+fn_kwargs = {
+        "model": MBartForConditionalGeneration.from_pretrained("vasudevgupta/mbart-iitb-hin-eng"),
+        "tokenizer": MBartTokenizer.from_pretrained("vasudevgupta/mbart-iitb-hin-eng"),
+        "max_pred_length": 96,
+    }
+
+
+def trans(text):
+  text=text.lower()
+  lang=TextBlob(text)
+  if(lang.detect_language()=='hi'):
+    text=translate(text, **fn_kwargs)
+    #text=(transliterate(text, sanscript.ITRANS, sanscript.DEVANAGARI))
+  return(text)  
 
 #def remove_accented_chars(text):
 #    text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8', 'ignore')
 #    return text          
 
-# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_handle_names(x))
-# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_https(x))
-# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:strip_html_tags(x))
-# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:expand_contractions(x))
-# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_punct(x))
-# data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:demojize(x))
-# data_tweet['Tweet'] = data_tweet['Tweet'].apply(lambda x : re.sub('_', '', x))
-# #data_tweet['Tweet']=data_tweet['Tweet'].apply(lambda x:remove_stopwords(x))
-
-#Change the location to place where you want to save the Cleaned file
-#data_tweet.to_csv('tweets_clean.csv', index = False)
-
 def clean_text(text):
+  text=text.lower()
   text=remove_handle_names(text)
   text=remove_https(text)
   text=strip_html_tags(text)
@@ -185,6 +222,7 @@ def clean_text(text):
   text=re.sub('_', '', text)
   text=re.sub('\n','',text)
   text=re.sub('[0-9]',' ',text)
+  text=trans(text)
   return(text)
 
 #Sample function call
