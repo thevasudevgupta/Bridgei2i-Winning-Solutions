@@ -1,5 +1,12 @@
 # Bridgei2i solution
 
+**Winning solution of competition held by Bridgei2i under InterIIT Tech Meet 2021.**
+
+| Team Members | [Vasudev](https://github.com/vasudevgupta7), [Mukund](https://github.com/MukundVarmaT), [Jayesh](https://github.com/jayeshkumar1734), [Yadukrishnan](https://github.com/YadukrishnanBlk), [Tanay](https://github.com/tanay2001), [Anirudh](https://github.com/anirudhs123), [Siddhant](https://github.com/tokentaker2339) |
+|--------------|---------------------------------------------------------------------------------------------|
+
+## Contents
+
 We provide well-commented code for your reference. The overall directory structure is as follows:
 
 **Outputs for the evaluation data is located at ./predictions/**
@@ -12,11 +19,11 @@ We provide well-commented code for your reference. The overall directory structu
 │   └── train_cls.py # training classification model
 ├── summarization
 │   ├── train.py # fine mbart model on dataset (refer to training_utils/args.py)
-│   ├── evaluate.py
-│   └── summarize_using_baseline.py
+│   └── evaluate.py
 ├── ner
 |   └── run.py # run NER + sentiment
-├── ppt.pdf # brief solution description
+├── assets
+|   └── ppt.pdf # brief solution description
 ├── preprocess.py # preprocessing script
 └── README.md
 ```
