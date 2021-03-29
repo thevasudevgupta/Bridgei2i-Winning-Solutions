@@ -141,7 +141,7 @@ def text_phonemes(text="बचाकसट इनाम पढ़ती है�
         if tokens[i] == "अ" and tokens[i+1] in special_vowels:
             tokens[i] = "अ" + tokens[i]
 
-    # half mathra 
+    # half mathra
     temp = []
     cntr = 0
     for i in range(len(tokens)):
@@ -181,7 +181,7 @@ def text_phonemes(text="बचाकसट इनाम पढ़ती है�
         elif tokens[i] == " ":
             temp.append("SIL")
     tokens = temp
-    
+
     temp = []
     for i in range(len(tokens)):
         if tokens[i] == "SIL" and tokens[i-1] == "SIL":
@@ -236,6 +236,7 @@ def conv_phoneme(text):
             out = g2p(word)
             out = [re.sub(r"[0-9]", "", o) for o in out]
             out = [converter[o] for o in out if o not in [",", ".", ""]]
+            out.append("SIL")
         else:
             out = text_phonemes(word)
         temp.extend(out)

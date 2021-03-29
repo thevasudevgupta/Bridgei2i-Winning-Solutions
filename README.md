@@ -1,6 +1,6 @@
 # Bridgei2i solution
 
-**Winning solution of competition held by Bridgei2i under InterIIT Tech Meet 2021.**
+**Winning solution of competition held by Bridgei2i under InterIIT Tech Meet 2021 [[video](https://youtu.be/AA0C-iF9RJg?t=5880), [slides](https://docs.google.com/presentation/d/1I0dHNFcSF6rTnmvVpt7fPRfOrqT9BkyDgKz8tXYIcUw/edit?usp=sharing)]**
 
 | Team Members | [Vasudev](https://github.com/vasudevgupta7), [Mukund](https://github.com/MukundVarmaT), [Jayesh](https://github.com/jayeshkumar1734), [Yadukrishnan](https://github.com/YadukrishnanBlk), [Tanay](https://github.com/tanay2001), [Anirudh](https://github.com/anirudhs123), [Siddhant](https://github.com/tokentaker2339) |
 |--------------|---------------------------------------------------------------------------------------------|

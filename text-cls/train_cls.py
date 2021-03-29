@@ -28,11 +28,14 @@ class TextData(Dataset):
 
     def __getitem__(self, indx):
         sent = eval(self.data["phonemes"][indx])
-        sent = [self.w2ind[w] for w in sent][0: 500]
+        sent = [self.w2ind[w] for w in sent]
+        if len(sent) > 500:
+            start_indx = random.randint(0, len(sent)-500)
+            sent = sent[start_indx: start_indx+500]
         target = self.data["Mobile_Tech_Tag"][indx]
 
         return torch.LongTensor(sent), torch.LongTensor([target])
-    
+
     def __len__(self):
         return len(self.data)
 
@@ -45,15 +48,13 @@ class CNNModel(nn.Module):
     def __init__(self, vocab_size, emb_dim, fmaps, strides, dropout_factor, num_classes):
         super(CNNModel, self).__init__()
         self.embedding = nn.Embedding(vocab_size, emb_dim)
-        
+
         conv_layers = [nn.Conv2d(1, fmaps, (stride, emb_dim), padding=(stride-1, 0)) for stride in strides]
         self.conv_layers = nn.Sequential(*conv_layers)
 
-        conv_layers2 = [nn.Conv1d(fmaps, fmaps, stride, padding=stride-1) for stride in strides]
-        self.conv_layers2 = nn.Sequential(*conv_layers2)
-
         self.dropout = nn.Dropout(dropout_factor)
-        self.fc = nn.Linear(len(conv_layers)*fmaps, num_classes)
+        self.fc_1 = nn.Linear(len(conv_layers)*fmaps, len(conv_layers)*fmaps)
+        self.fc_2 = nn.Linear(len(conv_layers)*fmaps, num_classes)
 
     def forward(self, x, mix=False, lam=0):
         if mix:
@@ -68,16 +69,16 @@ class CNNModel(nn.Module):
             x = self.embedding(x).unsqueeze(1)
             x = [F.relu(conv(x)).squeeze(3) for conv in self.conv_layers]
 
-        x = [F.relu(self.conv_layers2[i](x[i])) for i in range(len(self.conv_layers2))]
         x = [F.max_pool1d(c, c.size(2)).squeeze(2) for c in x]
         x = torch.cat(x, 1)
+        x = self.fc_1(x)
         x = self.dropout(x)
-        x = self.fc(x)
+        x = self.fc_2(x)
         if mix:
             return x, shuffle_indices
         else:
             return x
-    
+
     def load_ckpt(self, fname, map_location="cpu"):
         self.load_state_dict(torch.load(fname, map_location=map_location))
 
@@ -104,6 +105,74 @@ def progress_bar(progress=0, status="", bar_len=20):
     if progress == 1:
         print()
 
+def train(epochs, mix_prob, model, train_loader, val_loader, optim, criterion, device, model_save="best_cls.ckpt"):
+    best = 0
+    for epoch in range(epochs):
+        print(f"Epoch: {epoch}")
+        print("---------------")
+        mean_correct = []
+        mean_loss = []
+        model.train()
+        for indx, (sent, target) in enumerate(train_loader):
+            sent, target = sent.to(device), target.to(device)
+            if random.random() < mix_prob:
+                lam = random.random()
+                pred_logits, shuffle_indices = model(sent, True, lam)
+                loss = (1-lam)*criterion(pred_logits, target) + lam*criterion(pred_logits, target[shuffle_indices])
+            else:
+                pred_logits = model(sent)
+                loss = criterion(pred_logits, target)
+
+            optim.zero_grad()
+            loss.backward()
+            optim.step()
+
+            pred_cls = pred_logits.max(1)[1]
+            correct = pred_cls.eq(target.long()).cpu().sum()
+            mean_correct.append(correct.item()/sent.size()[0])
+            mean_loss.append(loss.item())
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
+            progress_bar(indx/len(train_loader), status=f"train loss: {round(np.mean(mean_loss), 3)}, acc: {round(np.mean(mean_correct), 3)}")
+        progress_bar(1, status=f"train loss: {round(np.mean(mean_loss), 3)}, acc: {round(np.mean(mean_correct), 3)}")
+
+        model.eval()
+        mean_loss = []
+        mean_correct = []
+        for indx, (sent, target) in enumerate(train_loader):
+            sent, target = sent.to(device), target.to(device)
+            pred_logits = model(sent)
+            loss = criterion(pred_logits, target)
+
+            pred_cls = pred_logits.max(1)[1]
+            correct = pred_cls.eq(target.long()).cpu().sum()
+            mean_correct.append(correct.item()/sent.size()[0])
+            mean_loss.append(loss.item())
+
+            progress_bar(indx/len(train_loader), status=f"train loss: {round(np.mean(mean_loss), 3)}, acc: {round(np.mean(mean_correct), 3)}")
+        progress_bar(1, status=f"train loss: {round(np.mean(mean_loss), 3)}, acc: {round(np.mean(mean_correct), 3)}")
+
+        mean_loss = []
+        mean_correct = []
+        for indx, (sent, target) in enumerate(val_loader):
+            sent, target = sent.to(device), target.to(device)
+            pred_logits = model(sent)
+            loss = criterion(pred_logits, target)
+
+            pred_cls = pred_logits.max(1)[1]
+            correct = pred_cls.eq(target.long()).cpu().sum()
+            mean_correct.append(correct.item()/sent.size()[0])
+            mean_loss.append(loss.item())
+
+            progress_bar(indx/len(val_loader), status=f"val loss: {round(np.mean(mean_loss), 3)}, acc: {round(np.mean(mean_correct), 3)}")
+        progress_bar(1, status=f"val loss: {round(np.mean(mean_loss), 3)}, acc: {round(np.mean(mean_correct), 3)}")
+
+        if np.mean(mean_correct) > best:
+            torch.save(model.state_dict(), model_save)
+            best = np.mean(mean_correct)
+    return best
+
 if __name__ == "__main__":
     w2ind = load_pickle("w2ind.pickle")
     train_dset = TextData("../clean_article.csv", w2ind, "train")
@@ -117,51 +186,7 @@ if __name__ == "__main__":
 
     criterion = nn.CrossEntropyLoss()
     optim = torch.optim.Adam(model.parameters(), lr=0.001)
-    best = 0
-    for epoch in range(25):
-        print(f"Epoch: {epoch}")
-        print("---------------")
-        mean_correct = []
-        model.train()
-        for indx, (sent, target) in enumerate(train_loader):
-            sent, target = sent.to(device), target.to(device)
-            if random.random() > 0.5:
-                lam = random.random()
-                pred_logits, shuffle_indices = model(sent, True, lam)
-                loss = (1-lam)*criterion(pred_logits, target) + lam*criterion(pred_logits, target[shuffle_indices])
-            else:
-                pred_logits = model(sent)
-                loss = criterion(pred_logits, target)
-
-            optim.zero_grad()
-            loss.backward()
-            optim.step()
-            
-            pred_cls = pred_logits.max(1)[1]
-            correct = pred_cls.eq(target.long()).cpu().sum()
-            mean_correct.append(correct.item()/sent.size()[0])
-
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-
-            progress_bar(indx/len(train_loader), status=f"train loss: {round(loss.item(), 3)}, acc: {round(np.mean(mean_correct), 3)}")
-        progress_bar(1, status=f"train loss: {round(loss.item(), 3)}, acc: {round(np.mean(mean_correct), 3)}")
-
-        model.eval()
-        for indx, (sent, target) in enumerate(val_loader):
-            sent, target = sent.to(device), target.to(device)
-            pred_logits = model(sent)
-            loss = criterion(pred_logits, target)
-
-            pred_cls = pred_logits.max(1)[1]
-            correct = pred_cls.eq(target.long()).cpu().sum()
-            mean_correct.append(correct.item()/sent.size()[0])
-
-            progress_bar(indx/len(val_loader), status=f"val loss: {round(loss.item(), 3)}, acc: {round(np.mean(mean_correct), 3)}")
-        progress_bar(1, status=f"val loss: {round(loss.item(), 3)}, acc: {round(np.mean(mean_correct), 3)}")
-
-        if np.mean(mean_correct) > best:
-            torch.save(model.state_dict(), "best_cls.ckpt")
-            best = np.mean(mean_correct)
+    best_article = train(25, 0.5, model, train_loader, val_loader, optim, criterion, device)
 
     train_dset = TextData("../clean_tweet.csv", w2ind, "train")
     train_loader = DataLoader(train_dset, batch_size=32, num_workers=4, shuffle=True, collate_fn=pad_collate)
@@ -169,47 +194,5 @@ if __name__ == "__main__":
     val_dset = TextData("../clean_tweet.csv", w2ind, "val")
     val_loader = DataLoader(val_dset, batch_size=32, num_workers=4, shuffle=True, collate_fn=pad_collate)
 
-    for epoch in range(25):
-        print(f"Epoch: {epoch}")
-        print("---------------")
-        mean_correct = []
-        model.train()
-        for indx, (sent, target) in enumerate(train_loader):
-            sent, target = sent.to(device), target.to(device)
-            if random.random() > 0.5:
-                lam = random.random()
-                pred_logits, shuffle_indices = model(sent, True, lam)
-                loss = (1-lam)*criterion(pred_logits, target) + lam*criterion(pred_logits, target[shuffle_indices])
-            else:
-                pred_logits = model(sent)
-                loss = criterion(pred_logits, target)
-
-            optim.zero_grad()
-            loss.backward()
-            optim.step()
-            
-            pred_cls = pred_logits.max(1)[1]
-            correct = pred_cls.eq(target.long()).cpu().sum()
-            mean_correct.append(correct.item()/sent.size()[0])
-
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-
-            progress_bar(indx/len(train_loader), status=f"train loss: {round(loss.item(), 3)}, acc: {round(np.mean(mean_correct), 3)}")
-        progress_bar(1, status=f"train loss: {round(loss.item(), 3)}, acc: {round(np.mean(mean_correct), 3)}")
-
-        model.eval()
-        for indx, (sent, target) in enumerate(val_loader):
-            sent, target = sent.to(device), target.to(device)
-            pred_logits = model(sent)
-            loss = criterion(pred_logits, target)
-
-            pred_cls = pred_logits.max(1)[1]
-            correct = pred_cls.eq(target.long()).cpu().sum()
-            mean_correct.append(correct.item()/sent.size()[0])
-
-            progress_bar(indx/len(val_loader), status=f"val loss: {round(loss.item(), 3)}, acc: {round(np.mean(mean_correct), 3)}")
-        progress_bar(1, status=f"val loss: {round(loss.item(), 3)}, acc: {round(np.mean(mean_correct), 3)}")
-
-        if np.mean(mean_correct) > best:
-            torch.save(model.state_dict(), "best_cls.ckpt")
-            best = np.mean(mean_correct)
+    best_tweet = train(25, 0.5, model, train_loader, val_loader, optim, criterion, device)
+    print(f"val performance on articles: {round(best_article, 3)}, tweets: {round(best_tweet, 3)}")
